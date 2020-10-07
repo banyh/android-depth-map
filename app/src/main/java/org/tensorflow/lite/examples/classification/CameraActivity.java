@@ -49,6 +49,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.tensorflow.lite.examples.classification.env.ImageUtils;
@@ -468,7 +470,7 @@ public abstract class CameraActivity extends AppCompatActivity
           CameraConnectionFragment.newInstance(
               new CameraConnectionFragment.ConnectionCallback() {
                 @Override
-                public void onPreviewSizeChosen(final Size size, final int rotation) {
+                public void onPreviewSizeChosen(final Size size, final int rotation) throws IOException {
                   previewHeight = size.getHeight();
                   previewWidth = size.getWidth();
                   CameraActivity.this.onPreviewSizeChosen(size, rotation);
@@ -611,7 +613,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
   protected abstract void processImage();
 
-  protected abstract void onPreviewSizeChosen(final Size size, final int rotation);
+  protected abstract void onPreviewSizeChosen(final Size size, final int rotation) throws IOException;
 
   protected abstract int getLayoutId();
 

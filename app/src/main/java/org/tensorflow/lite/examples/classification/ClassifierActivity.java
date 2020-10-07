@@ -37,9 +37,11 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
   private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
   private static final float TEXT_SIZE_DIP = 10;
   private Bitmap rgbFrameBitmap = null;
+  private Bitmap depthBitmap = null;
   private long lastProcessingTimeMs;
   private Integer sensorOrientation;
   private Classifier classifier;
+  private DepthEstimationModel depthEstimator;
   private BorderedText borderedText;
   /** Input image size of the model along x axis. */
   private int imageSizeX;
@@ -57,7 +59,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
   }
 
   @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation) {
+  public void onPreviewSizeChosen(final Size size, final int rotation) throws IOException {
     final float textSizePx =
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
@@ -78,40 +80,42 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
+    depthBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
   }
 
   @Override
   protected void processImage() {
     rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
     final int cropSize = Math.min(previewWidth, previewHeight);
+    depthEstimator.inferenceBitmap(rgbFrameBitmap, depthBitmap);
 
-    runInBackground(
-        new Runnable() {
-          @Override
-          public void run() {
-            if (classifier != null) {
-              final long startTime = SystemClock.uptimeMillis();
-              final List<Classifier.Recognition> results =
-                  classifier.recognizeImage(rgbFrameBitmap, sensorOrientation);
-              lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-              LOGGER.v("Detect: %s", results);
-
-              runOnUiThread(
-                  new Runnable() {
-                    @Override
-                    public void run() {
-                      showResultsInBottomSheet(results);
-                      showFrameInfo(previewWidth + "x" + previewHeight);
-                      showCropInfo(imageSizeX + "x" + imageSizeY);
-                      showCameraResolution(cropSize + "x" + cropSize);
-                      showRotationInfo(String.valueOf(sensorOrientation));
-                      showInference(lastProcessingTimeMs + "ms");
-                    }
-                  });
-            }
-            readyForNextImage();
-          }
-        });
+//    runInBackground(
+//        new Runnable() {
+//          @Override
+//          public void run() {
+//            if (classifier != null) {
+//              final long startTime = SystemClock.uptimeMillis();
+//              final List<Classifier.Recognition> results =
+//                  classifier.recognizeImage(rgbFrameBitmap, sensorOrientation);
+//              lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
+//              LOGGER.v("Detect: %s", results);
+//
+//              runOnUiThread(
+//                  new Runnable() {
+//                    @Override
+//                    public void run() {
+//                      showResultsInBottomSheet(results);
+//                      showFrameInfo(previewWidth + "x" + previewHeight);
+//                      showCropInfo(imageSizeX + "x" + imageSizeY);
+//                      showCameraResolution(cropSize + "x" + cropSize);
+//                      showRotationInfo(String.valueOf(sensorOrientation));
+//                      showInference(lastProcessingTimeMs + "ms");
+//                    }
+//                  });
+//            }
+//            readyForNextImage();
+//          }
+//        });
   }
 
   @Override
@@ -123,15 +127,29 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
     final Device device = getDevice();
     final Model model = getModel();
     final int numThreads = getNumThreads();
-    runInBackground(() -> recreateClassifier(model, device, numThreads));
+    runInBackground(() -> {
+      try {
+        recreateClassifier(model, device, numThreads);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
   }
 
-  private void recreateClassifier(Model model, Device device, int numThreads) {
+  private void recreateClassifier(Model model, Device device, int numThreads) throws IOException {
     if (classifier != null) {
       LOGGER.d("Closing classifier.");
       classifier.close();
       classifier = null;
     }
+    if (depthEstimator != null) {
+      LOGGER.d("Closing depth estimator");
+      depthEstimator.close();
+      depthEstimator = null;
+    }
+
+    depthEstimator = new DepthEstimationModel(this);
+
     if (device == Device.GPU
         && (model == Model.QUANTIZED_MOBILENET || model == Model.QUANTIZED_EFFICIENTNET)) {
       LOGGER.d("Not creating classifier: GPU doesn't support quantized models.");

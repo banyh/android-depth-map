@@ -52,6 +52,8 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -138,7 +140,11 @@ public class CameraConnectionFragment extends Fragment {
         @Override
         public void onSurfaceTextureAvailable(
             final SurfaceTexture texture, final int width, final int height) {
-          openCamera(width, height);
+          try {
+            openCamera(width, height);
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
         }
 
         @Override
@@ -305,7 +311,11 @@ public class CameraConnectionFragment extends Fragment {
     // a camera and start preview from here (otherwise, we wait until the surface is ready in
     // the SurfaceTextureListener).
     if (textureView.isAvailable()) {
-      openCamera(textureView.getWidth(), textureView.getHeight());
+      try {
+        openCamera(textureView.getWidth(), textureView.getHeight());
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     } else {
       textureView.setSurfaceTextureListener(surfaceTextureListener);
     }
@@ -323,7 +333,7 @@ public class CameraConnectionFragment extends Fragment {
   }
 
   /** Sets up member variables related to camera. */
-  private void setUpCameraOutputs() {
+  private void setUpCameraOutputs() throws IOException {
     final Activity activity = getActivity();
     final CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
     try {
@@ -364,7 +374,7 @@ public class CameraConnectionFragment extends Fragment {
   }
 
   /** Opens the camera specified by {@link CameraConnectionFragment#cameraId}. */
-  private void openCamera(final int width, final int height) {
+  private void openCamera(final int width, final int height) throws IOException {
     setUpCameraOutputs();
     configureTransform(width, height);
     final Activity activity = getActivity();
@@ -531,7 +541,7 @@ public class CameraConnectionFragment extends Fragment {
    * known.
    */
   public interface ConnectionCallback {
-    void onPreviewSizeChosen(Size size, int cameraRotation);
+    void onPreviewSizeChosen(Size size, int cameraRotation) throws IOException;
   }
 
   /** Compares two {@code Size}s based on their areas. */
