@@ -34,7 +34,7 @@ import org.tensorflow.lite.examples.classification.tflite.Classifier.Model;
 
 public class ClassifierActivity extends CameraActivity implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
-  private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
+  private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 448);
   private static final float TEXT_SIZE_DIP = 10;
   private Bitmap rgbFrameBitmap = null;
   private Bitmap depthBitmap = null;
@@ -80,14 +80,29 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
-    depthBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
+    depthBitmap = Bitmap.createBitmap(DESIRED_PREVIEW_SIZE.getWidth(), DESIRED_PREVIEW_SIZE.getHeight(), Config.ARGB_8888);
   }
 
   @Override
   protected void processImage() {
     rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
-    final int cropSize = Math.min(previewWidth, previewHeight);
-    depthEstimator.inferenceBitmap(rgbFrameBitmap, depthBitmap);
+    runInBackground(
+      new Runnable() {
+        @Override
+        public void run() {
+          depthEstimator.inferenceBitmap(rgbFrameBitmap, depthBitmap);
+          runOnUiThread(
+            new Runnable() {
+              @Override
+              public void run() {
+                depthImageView.setImageBitmap(depthBitmap);
+              }
+            }
+          );
+          readyForNextImage();
+        }
+      }
+    );
 
 //    runInBackground(
 //        new Runnable() {

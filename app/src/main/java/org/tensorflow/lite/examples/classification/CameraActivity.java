@@ -99,6 +99,7 @@ public abstract class CameraActivity extends AppCompatActivity
   private Spinner modelSpinner;
   private Spinner deviceSpinner;
   private TextView threadsTextView;
+  protected ImageView depthImageView;
 
   private Model model = Model.QUANTIZED_EFFICIENTNET;
   private Device device = Device.CPU;
@@ -118,6 +119,7 @@ public abstract class CameraActivity extends AppCompatActivity
       requestPermission();
     }
 
+    depthImageView = findViewById(R.id.depthmap);
     threadsTextView = findViewById(R.id.threads);
     plusImageView = findViewById(R.id.plus);
     minusImageView = findViewById(R.id.minus);
