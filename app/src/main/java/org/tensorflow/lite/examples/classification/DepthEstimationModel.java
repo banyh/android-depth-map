@@ -38,7 +38,7 @@ public class DepthEstimationModel {
     }
 
     protected String getModelPath() {
-        return "pydnet++.tflite";
+        return "tflite_pydnet++.tflite";
     }
 
     public void close() {

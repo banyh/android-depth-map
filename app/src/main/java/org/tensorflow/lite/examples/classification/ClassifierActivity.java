@@ -20,17 +20,11 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
-import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
-import android.widget.Toast;
 import java.io.IOException;
-import java.util.List;
 import org.tensorflow.lite.examples.classification.env.BorderedText;
 import org.tensorflow.lite.examples.classification.env.Logger;
-import org.tensorflow.lite.examples.classification.tflite.Classifier;
-import org.tensorflow.lite.examples.classification.tflite.Classifier.Device;
-import org.tensorflow.lite.examples.classification.tflite.Classifier.Model;
 
 public class ClassifierActivity extends CameraActivity implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
@@ -40,7 +34,6 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
   private Bitmap depthBitmap = null;
   private long lastProcessingTimeMs;
   private Integer sensorOrientation;
-  private Classifier classifier;
   private DepthEstimationModel depthEstimator;
   private BorderedText borderedText;
   /** Input image size of the model along x axis. */
@@ -66,11 +59,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
     borderedText = new BorderedText(textSizePx);
     borderedText.setTypeface(Typeface.MONOSPACE);
 
-    recreateClassifier(getModel(), getDevice(), getNumThreads());
-    if (classifier == null) {
-      LOGGER.e("No classifier on preview!");
-      return;
-    }
+    recreateClassifier();
 
     previewWidth = size.getWidth();
     previewHeight = size.getHeight();
@@ -103,34 +92,6 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
         }
       }
     );
-
-//    runInBackground(
-//        new Runnable() {
-//          @Override
-//          public void run() {
-//            if (classifier != null) {
-//              final long startTime = SystemClock.uptimeMillis();
-//              final List<Classifier.Recognition> results =
-//                  classifier.recognizeImage(rgbFrameBitmap, sensorOrientation);
-//              lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-//              LOGGER.v("Detect: %s", results);
-//
-//              runOnUiThread(
-//                  new Runnable() {
-//                    @Override
-//                    public void run() {
-//                      showResultsInBottomSheet(results);
-//                      showFrameInfo(previewWidth + "x" + previewHeight);
-//                      showCropInfo(imageSizeX + "x" + imageSizeY);
-//                      showCameraResolution(cropSize + "x" + cropSize);
-//                      showRotationInfo(String.valueOf(sensorOrientation));
-//                      showInference(lastProcessingTimeMs + "ms");
-//                    }
-//                  });
-//            }
-//            readyForNextImage();
-//          }
-//        });
   }
 
   @Override
@@ -139,24 +100,16 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
       // Defer creation until we're getting camera frames.
       return;
     }
-    final Device device = getDevice();
-    final Model model = getModel();
-    final int numThreads = getNumThreads();
     runInBackground(() -> {
       try {
-        recreateClassifier(model, device, numThreads);
+        recreateClassifier();
       } catch (IOException e) {
         e.printStackTrace();
       }
     });
   }
 
-  private void recreateClassifier(Model model, Device device, int numThreads) throws IOException {
-    if (classifier != null) {
-      LOGGER.d("Closing classifier.");
-      classifier.close();
-      classifier = null;
-    }
+  private void recreateClassifier() throws IOException {
     if (depthEstimator != null) {
       LOGGER.d("Closing depth estimator");
       depthEstimator.close();
@@ -164,31 +117,5 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
     }
 
     depthEstimator = new DepthEstimationModel(this);
-
-    if (device == Device.GPU
-        && (model == Model.QUANTIZED_MOBILENET || model == Model.QUANTIZED_EFFICIENTNET)) {
-      LOGGER.d("Not creating classifier: GPU doesn't support quantized models.");
-      runOnUiThread(
-          () -> {
-            Toast.makeText(this, R.string.tfe_ic_gpu_quant_error, Toast.LENGTH_LONG).show();
-          });
-      return;
-    }
-    try {
-      LOGGER.d(
-          "Creating classifier (model=%s, device=%s, numThreads=%d)", model, device, numThreads);
-      classifier = Classifier.create(this, model, device, numThreads);
-    } catch (IOException | IllegalArgumentException e) {
-      LOGGER.e(e, "Failed to create classifier.");
-      runOnUiThread(
-          () -> {
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
-          });
-      return;
-    }
-
-    // Updates the input image size.
-    imageSizeX = classifier.getImageSizeX();
-    imageSizeY = classifier.getImageSizeY();
   }
 }
