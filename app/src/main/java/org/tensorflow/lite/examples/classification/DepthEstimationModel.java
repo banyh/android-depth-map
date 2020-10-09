@@ -3,6 +3,7 @@ package org.tensorflow.lite.examples.classification;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.os.SystemClock;
 
 import org.tensorflow.lite.Interpreter;
@@ -38,7 +39,7 @@ public class DepthEstimationModel {
     }
 
     protected String getModelPath() {
-        return "tflite_pydnet++.tflite";
+        return "pydnet++.tflite";
     }
 
     public void close() {
@@ -83,17 +84,20 @@ public class DepthEstimationModel {
         return output;
     }
 
-    public void inferenceBitmap(Bitmap inputBitmap, Bitmap outputBitmap) {
+    public Bitmap inferenceBitmap(Bitmap inputBitmap) {
         int width = 640, height = 448;
         Bitmap resizedBitmap = Bitmap.createBitmap(inputBitmap, 0, 0, width, height);
         float[][][][] input = getPixelFromBitmap(resizedBitmap);
 
-//        long startTime = SystemClock.uptimeMillis();
         float[] output = inference(input, height, width);
-//        long inferenceTime = SystemClock.uptimeMillis() - startTime;
-//        LOGGER.d("inference time %dms", inferenceTime);
         int[] colors = applyColorMap(output);
-        outputBitmap.setPixels(colors, 0, width, 0, 0, width, height);
+        Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        tmpBitmap.setPixels(colors, 0, width, 0, 0, width, height);
+
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+        Bitmap outputBitmap = Bitmap.createBitmap(tmpBitmap, 0, 0, width, height, matrix, true);
+        return outputBitmap;
     }
 
     private int[] applyColorMap(float[] output) {

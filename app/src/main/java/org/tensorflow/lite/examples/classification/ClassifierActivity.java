@@ -69,7 +69,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
-    depthBitmap = Bitmap.createBitmap(DESIRED_PREVIEW_SIZE.getWidth(), DESIRED_PREVIEW_SIZE.getHeight(), Config.ARGB_8888);
+    depthBitmap = Bitmap.createBitmap(DESIRED_PREVIEW_SIZE.getHeight(), DESIRED_PREVIEW_SIZE.getWidth(), Config.ARGB_8888);
   }
 
   @Override
@@ -79,7 +79,7 @@ public class ClassifierActivity extends CameraActivity implements OnImageAvailab
       new Runnable() {
         @Override
         public void run() {
-          depthEstimator.inferenceBitmap(rgbFrameBitmap, depthBitmap);
+          depthBitmap = depthEstimator.inferenceBitmap(rgbFrameBitmap);
           runOnUiThread(
             new Runnable() {
               @Override
