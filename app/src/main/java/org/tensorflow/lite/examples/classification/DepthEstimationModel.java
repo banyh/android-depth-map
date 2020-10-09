@@ -39,7 +39,7 @@ public class DepthEstimationModel {
     }
 
     protected String getModelPath() {
-        return "pydnet++.tflite";
+        return "optimized_pydnet++.tflite";
     }
 
     public void close() {
@@ -69,7 +69,6 @@ public class DepthEstimationModel {
 
         float[][][][] output = new float[1][frame.getHeight()][frame.getWidth()][3];
         int y = 0, x = 0, c = 0;
-        float min = 10000, max = 0;
         for (int pixel : pixels) {
             output[0][y][x][0] = Color.red(pixel) / (float)255.;
             output[0][y][x][1] = Color.green(pixel) / (float)255.;
@@ -102,9 +101,20 @@ public class DepthEstimationModel {
 
     private int[] applyColorMap(float[] output) {
         int[] color = new int[output.length];
+//        float min = 10000, max = 0;
+//        for (float value : output) {
+//            if (value < min) {
+//                min = value;
+//            }
+//            if (value > max) {
+//                max = value;
+//            }
+//        }
         for (int i=0; i < output.length; i++) {
-            int x = (int) Math.max(Math.min(256 - output[i] * 10, 255), 0);
-            color[i] = 0xff << 24 | (x & 0xff) << 16 | (x & 0xff) << 8 | (x & 0xff);
+//            float new_output = (output[i] - min) / (max - min) * 255;
+            float new_output = output[i] * 9;
+            int x = 256 - (int) Math.max(Math.min(new_output, 255), 0);
+            color[i] = 0xff << 24 | x << 16 | (x / 2) << 8 | x;
         }
         return color;
     }
